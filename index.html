@@ -33,7 +33,7 @@
 html,body{background:var(--bg)}
 body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;color:var(--text);min-height:100vh;font-size:14px}
 button{cursor:pointer;touch-action:manipulation;font-family:inherit;-webkit-appearance:none;color:inherit}
-input,select{display:block;width:100%;padding:12px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:16px;background:var(--bg-input);color:var(--text);-webkit-appearance:none;appearance:none;font-family:inherit}
+input,select,textarea{display:block;width:100%;padding:12px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:16px;background:var(--bg-input);color:var(--text);-webkit-appearance:none;appearance:none;font-family:inherit}
 input::placeholder{color:var(--text-hint)}
 input:focus,select:focus{outline:none;border-color:var(--border-focus);box-shadow:0 0 0 3px rgba(92,74,42,.12)}
 select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237A6E5E' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
@@ -127,6 +127,14 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .ent-main .t{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ent-main .s{font-size:11px;color:var(--text-sub);margin-top:3px;line-height:1.5}
 .ent-amt{font-size:15px;font-weight:700;text-align:right;flex-shrink:0}
+.ent.editable{cursor:pointer}
+.ent.editable:active{background:var(--accent-soft)}
+.ent-main .m{font-size:12px;color:var(--text);margin-top:5px;padding:6px 8px;background:var(--accent-soft);border-radius:6px;line-height:1.5;white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.edited{display:inline-block;font-size:10px;color:var(--text-sub);border:1px solid var(--border);border-radius:10px;padding:0 6px;margin-left:4px;vertical-align:1px}
+.modal-box.edit-box{text-align:left}
+.edit-box h2{text-align:center;margin-bottom:14px;font-size:15px;color:var(--text)}
+.edit-box textarea{font-size:15px;resize:vertical;min-height:84px;line-height:1.5}
+.edit-box .chk-list{margin-top:0}
 .ent-del{border:none;background:none;color:var(--text-hint);font-size:18px;padding:6px;margin-right:-4px}
 .ent-del:active{color:var(--danger)}
 .empty{text-align:center;padding:40px 20px;color:var(--text-hint);font-size:13px;line-height:1.8}
@@ -317,6 +325,39 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   </div>
 </div>
 
+<div class="modal hidden" id="m-edit">
+  <div class="modal-box edit-box">
+    <h2>申請を編集</h2>
+    <div class="field">
+      <label class="lbl" for="e-fam">立て替えた家族</label>
+      <select id="e-fam"></select>
+    </div>
+    <div class="field">
+      <label class="lbl" for="e-amt">金額</label>
+      <div class="amount-wrap"><span>¥</span><input id="e-amt" inputmode="numeric" autocomplete="off"/></div>
+    </div>
+    <div class="field">
+      <span class="lbl">何に支払った？</span>
+      <div class="chips" id="e-cats"></div>
+      <input id="e-item" placeholder="内容（例：海鮮丼ランチ）" style="margin-top:10px" autocomplete="off"/>
+    </div>
+    <div class="field">
+      <label class="lbl" for="e-memo">詳細メモ</label>
+      <textarea id="e-memo" placeholder="例：レシートは江渕さんが保管／駐車場代込み など"></textarea>
+    </div>
+    <div class="field">
+      <span class="lbl">割り勘の対象</span>
+      <div class="chk-list" id="e-targets"></div>
+    </div>
+    <div class="hint" id="e-meta" style="margin-bottom:12px"></div>
+    <button class="btn" id="e-save">保存する</button>
+    <div class="btn-row">
+      <button class="btn ghost" id="e-cancel">キャンセル</button>
+      <button class="btn danger" id="e-del">この申請を削除</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal hidden" id="m-copy" style="z-index:300">
   <div class="modal-box">
     <h2>自動でコピーできませんでした</h2>
@@ -375,7 +416,7 @@ function cleanEntry(e,trip){
   if(!ids.includes(e.familyId))throw new Error('家族を選んでください');
   let targets=Array.isArray(e.targets)?e.targets.filter(x=>ids.includes(x)):[];
   if(targets.length===ids.length)targets=[];
-  return{familyId:e.familyId,category:String(e.category||'').slice(0,20),item:String(e.item||'').trim().slice(0,60),amount,targets,dev:String(e.dev||'').slice(0,40)};
+  return{familyId:e.familyId,category:String(e.category||'').slice(0,20),item:String(e.item||'').trim().slice(0,60),memo:String(e.memo||'').trim().slice(0,500),amount,targets,dev:String(e.dev||'').slice(0,40)};
 }
 function pubEntry(e,dev){const{dev:d,...rest}=e;return{...rest,mine:!!dev&&d===dev};}
 
@@ -403,6 +444,13 @@ const Mock={
     const d=this.db(),t=d.trips[id];if(!t)throw new Error('旅が見つかりません');
     const e={...cleanEntry(entry,t.trip),id:rid(10),createdAt:Date.now()};
     d.entries.push({tripId:id,...e});LS.set('wk_mockdb',d);return true;
+  },
+  updateEntry(id,entryId,key,entry){
+    const d=this.db(),t=d.trips[id];if(!t||t.key!==key)throw new Error('管理者のみ変更できます');
+    const i=d.entries.findIndex(e=>e.tripId===id&&e.id===entryId);if(i<0)throw new Error('申請が見つかりません（削除された可能性があります）');
+    const old=d.entries[i];
+    d.entries[i]={tripId:id,...cleanEntry({...entry,dev:old.dev},t.trip),id:old.id,createdAt:old.createdAt,editedAt:Date.now()};
+    LS.set('wk_mockdb',d);return true;
   },
   deleteEntry(id,entryId,key,dev){
     const d=this.db(),t=d.trips[id];if(!t)throw new Error('旅が見つかりません');
@@ -656,22 +704,71 @@ function renderList(){
     const d=new Date(e.createdAt);
     const when=`${d.getMonth()+1}/${d.getDate()} ${d.toTimeString().slice(0,5)}`;
     const tg=e.targets&&e.targets.length?`<br>対象：${e.targets.map(id=>esc(famName(id))).join('・')}`:'';
-    const row=document.createElement('div');row.className='ent';
+    const row=document.createElement('div');row.className='ent'+(S.owner?' editable':'');
     row.innerHTML=`<div class="ent-ic">${ic}</div>
-      <div class="ent-main"><div class="t">${esc(e.item||e.category)}</div><div class="s">${esc(famName(e.familyId))}が立替 ・ ${when}${e.item?' ・ '+esc(e.category):''}${tg}</div></div>
+      <div class="ent-main"><div class="t">${esc(e.item||e.category)}${e.editedAt?'<span class="edited">編集済</span>':''}</div><div class="s">${esc(famName(e.familyId))}が立替 ・ ${when}${e.item?' ・ '+esc(e.category):''}${tg}</div>${e.memo?`<div class="m">${esc(e.memo)}</div>`:''}</div>
       <div class="ent-amt">${yen(e.amount)}</div>`;
-    if(S.owner||e.mine){
+    if(S.owner){
+      // 管理者は行をタップで編集（削除も編集画面から）
+      row.addEventListener('click',()=>openEdit(e));
+    }else if(e.mine){
       const del=document.createElement('button');del.className='ent-del';del.textContent='×';del.setAttribute('aria-label','削除');
-      del.addEventListener('click',async()=>{
-        if(!confirm(`「${e.item||e.category} ${yen(e.amount)}」を削除しますか？`))return;
-        try{await api('deleteEntry',S.tripId,e.id,S.key,DEV);showToast('削除しました');await load();}
-        catch(err){showToast(err.message);}
-      });
+      del.addEventListener('click',()=>deleteEntry(e));
       row.appendChild(del);
     }
     box.appendChild(row);
   });
 }
+async function deleteEntry(e){
+  if(!confirm(`「${e.item||e.category} ${yen(e.amount)}」を削除しますか？`))return false;
+  try{await api('deleteEntry',S.tripId,e.id,S.key,DEV);showToast('削除しました');await load();return true;}
+  catch(err){showToast(err.message);return false;}
+}
+
+// ---------- 申請の編集（管理者） ----------
+let editing=null,editCat='';
+function renderEditCats(){
+  $('#e-cats').innerHTML=CATS.map(([n,i])=>`<button class="chip${n===editCat?' on':''}" data-v="${n}">${i} ${n}</button>`).join('');
+}
+$('#e-cats').addEventListener('click',ev=>{
+  const b=ev.target.closest('.chip');if(!b)return;
+  editCat=b.dataset.v;renderEditCats();
+});
+function openEdit(e){
+  editing=e;editCat=e.category;
+  const t=S.trip,fmtD=ms=>{const d=new Date(ms);return `${d.getMonth()+1}/${d.getDate()} ${d.toTimeString().slice(0,5)}`;};
+  const known=t.families.some(f=>f.id===e.familyId);
+  $('#e-fam').innerHTML=(known?'':'<option value="">（削除された家族）→ 選び直してください</option>')
+    +t.families.map((f,i)=>`<option value="${esc(f.id)}">${ALPHAS[i]}．${esc(f.name)}</option>`).join('');
+  $('#e-fam').value=known?e.familyId:'';
+  $('#e-amt').value=e.amount;
+  renderEditCats();
+  $('#e-item').value=e.item||'';
+  $('#e-memo').value=e.memo||'';
+  const tg=new Set(e.targets&&e.targets.length?e.targets:t.families.map(f=>f.id));
+  $('#e-targets').innerHTML=t.families.map(f=>`<label class="chk"><input type="checkbox" value="${esc(f.id)}"${tg.has(f.id)?' checked':''}/>${esc(f.name)}<small>${fmtW(weightOf(f,t.childWeight))}人分</small></label>`).join('');
+  $('#e-meta').textContent=`申請：${fmtD(e.createdAt)}`+(e.editedAt?` ／ 最終編集：${fmtD(e.editedAt)}`:'');
+  $('#m-edit').classList.remove('hidden');
+  $('#m-edit').scrollTop=0;
+}
+function closeEdit(){editing=null;$('#m-edit').classList.add('hidden');}
+$('#e-cancel').addEventListener('click',closeEdit);
+$('#m-edit').addEventListener('click',ev=>{if(ev.target.id==='m-edit')closeEdit();});
+$('#e-del').addEventListener('click',async()=>{if(editing&&await deleteEntry(editing))closeEdit();});
+$('#e-save').addEventListener('click',async()=>{
+  const familyId=$('#e-fam').value,amount=parseAmount($('#e-amt').value);
+  if(!familyId){showToast('立て替えた家族を選んでください');return;}
+  if(!(amount>0)){showToast('金額を入力してください');return;}
+  const targets=[...document.querySelectorAll('#e-targets input:checked')].map(x=>x.value);
+  if(!targets.length){showToast('割り勘の対象を1つ以上選んでください');return;}
+  const btn=$('#e-save');btn.disabled=true;btn.textContent='保存中…';
+  try{
+    await api('updateEntry',S.tripId,editing.id,S.key,{familyId,amount,category:editCat||'その他',item:$('#e-item').value,memo:$('#e-memo').value,targets});
+    closeEdit();showToast('✓ 修正しました');await load();
+  }catch(err){showToast(err.message);}
+  finally{btn.disabled=false;btn.textContent='保存する';}
+});
+
 $('#l-filters').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;S.filter=b.dataset.v;renderList();});
 
 // ---------- 精算 ----------
