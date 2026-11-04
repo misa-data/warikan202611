@@ -158,7 +158,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .modal{position:fixed;inset:0;z-index:200;background:rgba(40,32,20,.55);display:flex;align-items:center;justify-content:center;padding:16px}
 .modal-box{background:var(--bg-card);border-radius:18px;padding:22px 18px 18px;width:100%;max-width:400px;text-align:center;max-height:92vh;overflow:auto}
 .modal-box h2{font-size:13px;color:var(--text-sub);font-weight:600}
-.modal-box .trip-nm{font-size:22px;font-weight:700;margin:6px 0 14px}
+.modal-box .trip-nm{font-size:22px;font-weight:700;margin:6px 0 6px}
+.modal-box .trip-id{font-size:13px;color:var(--text-sub);margin-bottom:14px}
+.modal-box .trip-id b{font-size:17px;color:var(--accent);letter-spacing:.08em;font-family:ui-monospace,Menlo,monospace;user-select:all;-webkit-user-select:all}
 .qr-box{background:#fff;border-radius:14px;padding:16px;display:inline-block;border:1px solid var(--border)}
 .qr-box img,.qr-box canvas{display:block;width:240px!important;height:240px!important}
 .modal-box .url{font-size:11px;color:var(--text-hint);word-break:break-all;margin:12px 0 4px;line-height:1.5}
@@ -292,10 +294,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   <div class="modal-box">
     <h2>このQRを読み取って参加！</h2>
     <div class="trip-nm" id="q-name"></div>
+    <div class="trip-id">旅ID：<b id="q-id"></b></div>
     <div class="qr-box"><div id="q-code"></div></div>
     <div class="url" id="q-url"></div>
     <div class="btn-row">
-      <button class="btn ghost" id="q-copy">リンクをコピー</button>
+      <button class="btn ghost" id="q-copy">招待をコピー</button>
       <button class="btn ghost" id="q-share">送る</button>
     </div>
     <div class="admin hidden" id="q-admin">
@@ -780,6 +783,7 @@ $('#btn-del-trip').addEventListener('click',async()=>{
 function openQR(){
   $('#q-name').textContent=S.trip.name;
   const url=joinUrl();
+  $('#q-id').textContent=S.tripId;
   $('#q-url').textContent=url;
   const box=$('#q-code');box.innerHTML='';
   if(window.QRCode){new QRCode(box,{text:url,width:480,height:480,correctLevel:QRCode.CorrectLevel.M});}
@@ -790,8 +794,9 @@ function openQR(){
 $('#btn-qr').addEventListener('click',openQR);
 $('#q-close').addEventListener('click',()=>$('#m-qr').classList.add('hidden'));
 $('#m-qr').addEventListener('click',e=>{if(e.target.id==='m-qr')$('#m-qr').classList.add('hidden');});
-$('#q-copy').addEventListener('click',()=>copyText(joinUrl()));
-$('#q-share').addEventListener('click',()=>shareText(`「${S.trip.name}」の割り勘に参加してね\n${joinUrl()}`));
+const inviteText=()=>`「${S.trip.name}」の割り勘に参加してね\n旅ID：${S.tripId}\n${joinUrl()}`;
+$('#q-copy').addEventListener('click',()=>copyText(inviteText()));
+$('#q-share').addEventListener('click',()=>shareText(inviteText()));
 $('#q-admin-copy').addEventListener('click',()=>copyText(adminUrl()));
 
 function copyText(text){
