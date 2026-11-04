@@ -711,6 +711,7 @@ function resultText(r){
   else lines.push('清算は不要です');
   lines.push('','▼ 内訳（立替／負担）');
   r.fams.forEach(f=>lines.push(`${f.name}：${yen(f.paid)}／${yen(f.share)}`));
+  lines.push('','▼ 詳細・申請はこちら',joinUrl());
   return lines.join('\n');
 }
 
