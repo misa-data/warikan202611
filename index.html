@@ -12,6 +12,13 @@
 <link rel="apple-touch-icon" href="icon-180.png"/>
 <link rel="icon" type="image/png" href="icon-180.png"/>
 <title>旅の割り勘</title>
+<!-- LINE などでリンクを送ったときのプレビュー -->
+<meta name="description" content="旅行中の立替をみんなで申請して、最後に自動で精算。リンクを開くだけで参加できます。"/>
+<meta property="og:type" content="website"/>
+<meta property="og:site_name" content="旅の割り勘"/>
+<meta property="og:title" content="旅の割り勘 — 招待が届きました"/>
+<meta property="og:description" content="旅行中の立替をみんなで申請して、最後に自動で精算。リンクを開くだけで参加できます。"/>
+<meta property="og:image" content="https://misa-data.github.io/warikan202611/icon-512.png"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:rgba(0,0,0,0)}
@@ -307,6 +314,15 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <button class="btn ghost" id="q-admin-copy">管理者リンクをコピー</button>
     </div>
     <button class="btn" id="q-close" style="margin-top:12px">閉じる</button>
+  </div>
+</div>
+
+<div class="modal hidden" id="m-copy" style="z-index:300">
+  <div class="modal-box">
+    <h2>自動でコピーできませんでした</h2>
+    <div class="hint" style="margin:6px 0 10px">下の文を長押し →「すべてを選択」→「コピー」してください</div>
+    <textarea id="c-text" readonly style="width:100%;height:120px;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-family:inherit;resize:none;background:var(--bg-input);color:var(--text)"></textarea>
+    <button class="btn" id="c-close" style="margin-top:12px">閉じる</button>
   </div>
 </div>
 
@@ -799,16 +815,33 @@ $('#q-copy').addEventListener('click',()=>copyText(inviteText()));
 $('#q-share').addEventListener('click',()=>shareText(inviteText()));
 $('#q-admin-copy').addEventListener('click',()=>copyText(adminUrl()));
 
+// iPhone はタップ直後に同期でコピーしないと失敗するので、execCommand を先に試す
 function copyText(text){
   const done=()=>showToast('📋 コピーしました');
-  const fallback=()=>{
-    const ta=document.createElement('textarea');ta.value=text;ta.style.cssText='position:fixed;opacity:0;top:0;left:0';
-    document.body.appendChild(ta);ta.focus();ta.select();
-    try{document.execCommand('copy');done();}catch(e){prompt('コピーしてください',text);}
-    ta.remove();
-  };
-  if(navigator.clipboard)navigator.clipboard.writeText(text).then(done,fallback);else fallback();
+  if(legacyCopy(text)){done();return;}
+  if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(text).then(done,()=>manualCopy(text));
+  else manualCopy(text);
 }
+function legacyCopy(text){
+  const ta=document.createElement('textarea');
+  ta.value=text;ta.setAttribute('readonly','');ta.contentEditable='true';
+  ta.style.cssText='position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;font-size:16px';
+  document.body.appendChild(ta);
+  const sel=window.getSelection(),range=document.createRange();
+  range.selectNodeContents(ta);sel.removeAllRanges();sel.addRange(range);
+  ta.setSelectionRange(0,text.length);
+  let ok=false;
+  try{ok=document.execCommand('copy');}catch(e){}
+  sel.removeAllRanges();ta.remove();
+  return ok;
+}
+// 自動コピーできない端末向け：文面を表示して長押しでコピーしてもらう
+function manualCopy(text){
+  $('#c-text').value=text;
+  $('#m-copy').classList.remove('hidden');
+  setTimeout(()=>{$('#c-text').focus();$('#c-text').setSelectionRange(0,text.length);},50);
+}
+$('#c-close').addEventListener('click',()=>$('#m-copy').classList.add('hidden'));
 function shareText(text,preferCopy){
   if(!preferCopy&&navigator.share){navigator.share({text}).catch(err=>{if(err.name!=='AbortError')copyText(text);});}
   else copyText(text);
