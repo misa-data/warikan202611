@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="旅の割り勘"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+<meta name="theme-color" content="#F5F0E8"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="apple-touch-icon" href="icon-180.png"/>
+<link rel="icon" type="image/png" href="icon-180.png"/>
+<title>旅の割り勘</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:rgba(0,0,0,0)}
+:root{
+  --bg:#F5F0E8;--bg-card:#FDFAF5;--bg-input:#FFFFFF;
+  --border:#C8BFAA;--border-focus:#8C7B5E;
+  --text:#3A3228;--text-sub:#7A6E5E;--text-hint:#AFA498;
+  --accent:#5C4A2A;--accent-soft:rgba(92,74,42,.08);
+  --danger:#A0392A;--danger-bg:#FBF0EE;
+  --success:#2A6B42;--success-bg:#EEF7F1;
+}
+html,body{background:var(--bg)}
+body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;color:var(--text);min-height:100vh;font-size:14px}
+button{cursor:pointer;touch-action:manipulation;font-family:inherit;-webkit-appearance:none;color:inherit}
+input,select{display:block;width:100%;padding:12px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:16px;background:var(--bg-input);color:var(--text);-webkit-appearance:none;appearance:none;font-family:inherit}
+input::placeholder{color:var(--text-hint)}
+input:focus,select:focus{outline:none;border-color:var(--border-focus);box-shadow:0 0 0 3px rgba(92,74,42,.12)}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237A6E5E' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
+.app{max-width:480px;margin:0 auto;padding-bottom:calc(90px + env(safe-area-inset-bottom))}
+.hidden{display:none!important}
+
+/* header */
+.top{position:sticky;top:0;z-index:50;background:var(--bg);display:flex;align-items:center;gap:6px;padding:12px 12px 10px;border-bottom:1px solid rgba(200,191,170,.5)}
+.top-title{flex:1;min-width:0}
+.top-title b{display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top-title small{display:block;font-size:11px;color:var(--text-hint);margin-top:1px}
+.ibtn{min-width:42px;height:42px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg-card);font-size:17px;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0 10px}
+.ibtn:active{background:var(--accent-soft)}
+.ibtn.qr{background:var(--accent);border-color:var(--accent);color:#FDF8F0;font-size:13px;font-weight:600;gap:4px}
+
+/* layout */
+.pane{padding:14px}
+.card{background:var(--bg-card);border-radius:12px;border:1px solid var(--border);margin-bottom:12px;padding:16px}
+.card-t{font-size:13px;font-weight:600;color:var(--text-sub);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.field{margin-bottom:14px}
+.field:last-child{margin-bottom:0}
+.lbl{display:block;font-size:12px;color:var(--text-sub);font-weight:600;margin-bottom:6px}
+.hint{font-size:11px;color:var(--text-hint);margin-top:6px;line-height:1.6}
+.note{font-size:12px;color:var(--text-sub);line-height:1.7;background:var(--accent-soft);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+
+/* buttons */
+.btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:50px;padding:12px;border-radius:10px;font-size:15px;font-weight:600;border:1.5px solid var(--accent);background:var(--accent);color:#FDF8F0}
+.btn:active{opacity:.85}
+.btn:disabled{opacity:.5}
+.btn.ghost{background:transparent;color:var(--text-sub);border-color:var(--border);font-weight:500;font-size:14px}
+.btn.danger{background:transparent;color:var(--danger);border-color:rgba(160,57,42,.35);font-weight:500;font-size:14px}
+.btn-row{display:flex;gap:8px;margin-top:10px}
+.btn-row .btn{flex:1}
+.add-btn{display:flex;align-items:center;justify-content:center;width:100%;min-height:46px;border:1.5px dashed var(--border);border-radius:8px;background:transparent;color:var(--text-sub);font-size:14px}
+
+/* home */
+.hero{text-align:center;padding:26px 10px 18px}
+.hero h1{font-size:22px;letter-spacing:.04em}
+.hero p{font-size:12px;color:var(--text-sub);margin-top:6px}
+.trip-item{display:flex;align-items:center;gap:12px;background:var(--bg-card);border:1.5px solid var(--border);border-radius:12px;padding:14px;margin-bottom:8px;width:100%;text-align:left}
+.trip-item:active{background:var(--accent-soft)}
+.trip-item .nm{flex:1;min-width:0;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trip-item .rm{font-size:18px;color:var(--text-hint);padding:4px 6px}
+.role{font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;flex-shrink:0}
+.role.owner{background:var(--accent);color:#FDF8F0}
+.role.member{background:var(--accent-soft);color:var(--text-sub);border:1px solid var(--border)}
+.join-row{display:flex;gap:8px}
+.join-row input{flex:1}
+.join-row .btn{width:auto;min-height:0;padding:0 18px}
+
+/* setup */
+.seg{display:flex;border:1.5px solid var(--border);border-radius:10px;overflow:hidden}
+.seg button{flex:1;padding:11px 4px;border:none;background:var(--bg-input);font-size:13px;color:var(--text-sub)}
+.seg button+button{border-left:1.5px solid var(--border)}
+.seg button.on{background:var(--accent);color:#FDF8F0;font-weight:600}
+.fam{border:1.5px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--bg-input)}
+.fam-hd{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.fam-alpha{width:28px;height:28px;border-radius:50%;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--text-sub);flex-shrink:0;font-size:13px}
+.fam-hd input{flex:1;padding:10px 12px}
+.fam-del{width:40px;height:40px;border:1.5px solid var(--border);border-radius:8px;background:transparent;color:var(--text-sub);font-size:18px;flex-shrink:0}
+.fam-del:active{background:var(--danger-bg);color:var(--danger)}
+.fam-nums{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.stp{display:flex;align-items:center;gap:6px}
+.stp span.l{font-size:12px;color:var(--text-sub);width:38px}
+.stp button{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--border);background:var(--bg-card);font-size:17px;line-height:1}
+.stp button:active{background:var(--accent-soft)}
+.stp b{min-width:22px;text-align:center;font-size:16px}
+.fam-w{margin-left:auto;font-size:12px;color:var(--accent);font-weight:700;background:var(--accent-soft);padding:4px 10px;border-radius:20px}
+.total-w{text-align:right;font-size:12px;color:var(--text-sub);margin-bottom:10px}
+
+/* submit */
+.amount-wrap{position:relative}
+.amount-wrap span{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:22px;color:var(--text-sub);font-weight:600}
+.amount-wrap input{font-size:28px;font-weight:700;padding:14px 14px 14px 40px;letter-spacing:.02em}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:8px 12px;border-radius:20px;border:1.5px solid var(--border);background:var(--bg-input);font-size:13px;color:var(--text-sub)}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#FDF8F0;font-weight:600}
+.chk-list{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.chk{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg-input);font-size:14px}
+.chk input{width:20px;height:20px;padding:0;-webkit-appearance:checkbox;appearance:auto;flex-shrink:0;accent-color:var(--accent)}
+.chk small{margin-left:auto;color:var(--text-hint);font-size:11px}
+
+/* list */
+.sum-bar{display:flex;justify-content:space-between;align-items:center;background:var(--accent-soft);border-radius:8px;padding:11px 14px;margin-bottom:12px;font-size:13px}
+.sum-bar b{font-size:16px;color:var(--accent)}
+.filters{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;-webkit-overflow-scrolling:touch}
+.filters .chip{white-space:nowrap;flex-shrink:0}
+.ent{display:flex;gap:12px;align-items:center;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px}
+.ent-ic{width:40px;height:40px;border-radius:10px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.ent-main{flex:1;min-width:0}
+.ent-main .t{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ent-main .s{font-size:11px;color:var(--text-sub);margin-top:3px;line-height:1.5}
+.ent-amt{font-size:15px;font-weight:700;text-align:right;flex-shrink:0}
+.ent-del{border:none;background:none;color:var(--text-hint);font-size:18px;padding:6px;margin-right:-4px}
+.ent-del:active{color:var(--danger)}
+.empty{text-align:center;padding:40px 20px;color:var(--text-hint);font-size:13px;line-height:1.8}
+
+/* result */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.stat{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:12px}
+.stat small{display:block;font-size:11px;color:var(--text-sub)}
+.stat b{display:block;font-size:20px;margin-top:4px;color:var(--accent)}
+.rlabel{font-size:11px;color:var(--text-hint);font-weight:700;margin:4px 0 8px;letter-spacing:.06em}
+.settle{background:var(--bg-card);border:2px solid var(--danger);border-radius:12px;padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.settle .who{flex:1;font-size:14px;line-height:1.5}
+.settle .who b{font-size:15px}
+.settle .who small{display:block;font-size:11px;color:var(--text-sub)}
+.settle .amt{font-size:24px;font-weight:700;color:var(--danger);letter-spacing:-.5px}
+.no-settle{background:var(--success-bg);border:1px solid rgba(42,107,66,.25);border-radius:10px;padding:14px;font-size:13px;color:var(--success);text-align:center;font-weight:600;margin-bottom:8px}
+.ftable{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px}
+.frow{padding:12px 14px;border-bottom:1px solid rgba(200,191,170,.6)}
+.frow:last-child{border-bottom:none}
+.frow-hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.frow-hd b{font-size:14px}
+.frow-hd small{font-size:11px;color:var(--text-sub)}
+.frow-nums{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;font-size:11px;color:var(--text-sub)}
+.frow-nums span b{display:block;font-size:14px;color:var(--text);margin-top:2px}
+.pos{color:var(--success)!important}.neg{color:var(--danger)!important}
+
+/* bottom tabs */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:60;background:var(--bg-card);border-top:1px solid var(--border);padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
+.tabs-in{max-width:480px;margin:0 auto;display:flex}
+.tab{flex:1;border:none;background:none;padding:6px 2px;font-size:11px;color:var(--text-hint);display:flex;flex-direction:column;align-items:center;gap:2px}
+.tab i{font-style:normal;font-size:20px;filter:grayscale(1);opacity:.6}
+.tab.on{color:var(--accent);font-weight:700}
+.tab.on i{filter:none;opacity:1}
+
+/* modal */
+.modal{position:fixed;inset:0;z-index:200;background:rgba(40,32,20,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+.modal-box{background:var(--bg-card);border-radius:18px;padding:22px 18px 18px;width:100%;max-width:400px;text-align:center;max-height:92vh;overflow:auto}
+.modal-box h2{font-size:13px;color:var(--text-sub);font-weight:600}
+.modal-box .trip-nm{font-size:22px;font-weight:700;margin:6px 0 14px}
+.qr-box{background:#fff;border-radius:14px;padding:16px;display:inline-block;border:1px solid var(--border)}
+.qr-box img,.qr-box canvas{display:block;width:240px!important;height:240px!important}
+.modal-box .url{font-size:11px;color:var(--text-hint);word-break:break-all;margin:12px 0 4px;line-height:1.5}
+.modal-box .admin{margin-top:16px;padding-top:14px;border-top:1px dashed var(--border);text-align:left}
+
+.toast{position:fixed;bottom:calc(96px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%) translateY(20px);background:var(--accent);color:#FDF8F0;padding:11px 22px;border-radius:22px;font-size:13px;font-weight:500;opacity:0;transition:all .3s;pointer-events:none;z-index:9999;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.loading{text-align:center;padding:60px 20px;color:var(--text-hint)}
+.demo{font-size:11px;color:#8A5A10;background:#FFF5DE;border:1px solid #E8CF95;border-radius:8px;padding:8px 12px;margin-bottom:12px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ホーム -->
+  <section id="v-home">
+    <div class="hero">
+      <h1>🧳 旅の割り勘</h1>
+      <p>みんなで立替を申請して、最後にまとめて精算</p>
+    </div>
+    <div class="pane" style="padding-top:0">
+      <div id="demo-note" class="demo hidden">お試しモード：データはこの端末だけに保存されます。家族みんなで共有するには、index.html の API_URL に Apps Script の URL を設定してください。</div>
+      <button class="btn" id="btn-new">＋ 新しい旅を作る</button>
+      <div class="rlabel" style="margin-top:20px">わたしの旅</div>
+      <div id="home-list"></div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-t">旅IDで参加する</div>
+        <div class="join-row">
+          <input id="join-id" placeholder="例：Ab3dE5fG" autocapitalize="off" autocomplete="off"/>
+          <button class="btn" id="btn-join">参加</button>
+        </div>
+        <div class="hint">QRコードを読み取るか、共有されたリンクを開くと自動で参加できます。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 旅 -->
+  <section id="v-trip" class="hidden">
+    <header class="top">
+      <button class="ibtn" id="btn-back" aria-label="戻る">‹</button>
+      <div class="top-title"><b id="trip-name">…</b><small id="trip-sub"></small></div>
+      <button class="ibtn" id="btn-refresh" aria-label="更新">↻</button>
+      <button class="ibtn qr" id="btn-qr">▦ 招待</button>
+    </header>
+
+    <div id="trip-loading" class="loading">読み込み中…</div>
+
+    <!-- 申請 -->
+    <div class="pane hidden" id="p-submit">
+      <div class="card">
+        <div class="field">
+          <label class="lbl" for="s-fam">立て替えた家族</label>
+          <select id="s-fam"></select>
+        </div>
+        <div class="field">
+          <label class="lbl" for="s-amt">金額（割り勘前の立替額）</label>
+          <div class="amount-wrap"><span>¥</span><input id="s-amt" inputmode="numeric" placeholder="0" autocomplete="off"/></div>
+        </div>
+        <div class="field">
+          <span class="lbl">何に支払った？</span>
+          <div class="chips" id="s-cats"></div>
+          <input id="s-item" placeholder="内容（例：海鮮丼ランチ）" style="margin-top:10px" autocomplete="off"/>
+        </div>
+        <div class="field">
+          <span class="lbl">割り勘の対象</span>
+          <div class="seg" id="s-scope">
+            <button data-v="all" class="on">全家族</button>
+            <button data-v="some">一部の家族だけ</button>
+          </div>
+          <div class="chk-list hidden" id="s-targets"></div>
+        </div>
+      </div>
+      <button class="btn" id="btn-submit">申請する</button>
+    </div>
+
+    <!-- 履歴 -->
+    <div class="pane hidden" id="p-list">
+      <div class="sum-bar"><span id="l-label">合計</span><b id="l-total">¥0</b></div>
+      <div class="filters" id="l-filters"></div>
+      <div id="l-items"></div>
+    </div>
+
+    <!-- 精算 -->
+    <div class="pane hidden" id="p-result"></div>
+
+    <!-- 設定（オーナー） -->
+    <div class="pane hidden" id="p-setup">
+      <div class="card">
+        <div class="field">
+          <label class="lbl" for="u-name">旅の名前</label>
+          <input id="u-name" placeholder="例：2026 夏 沖縄旅行" autocomplete="off"/>
+        </div>
+        <div class="field">
+          <label class="lbl" for="u-date">日程（任意）</label>
+          <input id="u-date" placeholder="例：8/3〜8/5" autocomplete="off"/>
+        </div>
+        <div class="field">
+          <span class="lbl">子どもの扱い</span>
+          <div class="seg" id="u-cw">
+            <button data-v="0.5">0.5人分</button>
+            <button data-v="1">大人と同じ</button>
+            <button data-v="0">負担なし</button>
+          </div>
+          <div class="hint">大人は 1人分。例：大人2・子ども1 → 2.5人分</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-t"><span>参加する家族</span></div>
+        <div id="u-fams"></div>
+        <div class="total-w" id="u-total"></div>
+        <button class="add-btn" id="btn-add-fam">＋ 家族を追加</button>
+      </div>
+      <button class="btn" id="btn-save">保存する</button>
+      <div id="u-danger" class="btn-row">
+        <button class="btn danger" id="btn-del-trip">この旅を削除</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<nav class="tabs hidden" id="tabs">
+  <div class="tabs-in">
+    <button class="tab" data-tab="submit"><i>✍️</i>申請</button>
+    <button class="tab" data-tab="list"><i>🧾</i>履歴</button>
+    <button class="tab" data-tab="result"><i>💴</i>精算</button>
+    <button class="tab" data-tab="setup" id="tab-setup"><i>⚙️</i>設定</button>
+  </div>
+</nav>
+
+<div class="modal hidden" id="m-qr">
+  <div class="modal-box">
+    <h2>このQRを読み取って参加！</h2>
+    <div class="trip-nm" id="q-name"></div>
+    <div class="qr-box"><div id="q-code"></div></div>
+    <div class="url" id="q-url"></div>
+    <div class="btn-row">
+      <button class="btn ghost" id="q-copy">リンクをコピー</button>
+      <button class="btn ghost" id="q-share">送る</button>
+    </div>
+    <div class="admin hidden" id="q-admin">
+      <div class="lbl">管理者リンク（自分の別の端末用）</div>
+      <div class="hint" style="margin-top:0;margin-bottom:8px">このリンクを開いた端末は設定を変更できます。家族には送らないでください。</div>
+      <button class="btn ghost" id="q-admin-copy">管理者リンクをコピー</button>
+    </div>
+    <button class="btn" id="q-close" style="margin-top:12px">閉じる</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ▼ Apps Script をデプロイしたときの「/exec で終わるURL」をここに貼る（空ならお試しモード）
+const API_URL='';
+const REMOTE=!!API_URL;
+
+const CATS=[['食事','🍽'],['交通','🚃'],['ガソリン','⛽'],['高速・駐車','🛣'],['宿泊','🏨'],['入場・体験','🎫'],['買い物','🛍'],['その他','📦']];
+const ALPHAS='ABCDEFGHIJKLMNOPQRST';
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const yen=n=>(n<0?'-':'')+'¥'+Math.abs(Math.round(n)).toLocaleString('ja-JP');
+const fmtW=n=>(Math.round(n*10)/10).toString();
+const LS={
+  get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+};
+function rid(n){
+  const c='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  const a=crypto.getRandomValues(new Uint32Array(n));
+  let s='';for(const x of a)s+=c[x%c.length];return s;
+}
+const DEV=LS.get('wk_dev',null)||(()=>{const d=rid(16);LS.set('wk_dev',d);return d;})();
+
+function showToast(msg){
+  const t=$('#toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(showToast._t);showToast._t=setTimeout(()=>t.classList.remove('show'),2400);
+}
+
+// ---------- 入力値の整形（サーバー側 Code.gs と同じルール） ----------
+function cleanTrip(t){
+  const num=(v,min,max)=>Math.min(max,Math.max(min,Math.round(Number(v)||0)));
+  const cw=[0,0.5,1].includes(Number(t.childWeight))?Number(t.childWeight):0.5;
+  const fams=(t.families||[]).slice(0,20).map(f=>({
+    id:String(f.id||'').replace(/[^A-Za-z0-9]/g,'').slice(0,12)||rid(6),
+    name:String(f.name||'').trim().slice(0,30),
+    adults:num(f.adults,0,30),children:num(f.children,0,30)
+  })).filter(f=>f.name);
+  if(!fams.length)throw new Error('家族を1つ以上登録してください');
+  return{name:String(t.name||'').trim().slice(0,60)||'無題の旅',date:String(t.date||'').trim().slice(0,30),childWeight:cw,families:fams};
+}
+function cleanEntry(e,trip){
+  const amount=Math.round(Number(e.amount));
+  if(!(amount>0&&amount<=10000000))throw new Error('金額が正しくありません');
+  const ids=trip.families.map(f=>f.id);
+  if(!ids.includes(e.familyId))throw new Error('家族を選んでください');
+  let targets=Array.isArray(e.targets)?e.targets.filter(x=>ids.includes(x)):[];
+  if(targets.length===ids.length)targets=[];
+  return{familyId:e.familyId,category:String(e.category||'').slice(0,20),item:String(e.item||'').trim().slice(0,60),amount,targets,dev:String(e.dev||'').slice(0,40)};
+}
+function pubEntry(e,dev){const{dev:d,...rest}=e;return{...rest,mine:!!dev&&d===dev};}
+
+// ---------- お試しモード用（この端末の localStorage に保存） ----------
+const Mock={
+  db(){return LS.get('wk_mockdb',{trips:{},entries:[]});},
+  getTrip(id,key,dev){
+    const d=this.db(),t=d.trips[id];if(!t)throw new Error('旅が見つかりません（ID: '+id+'）');
+    return{trip:t.trip,owner:!!key&&key===t.key,entries:d.entries.filter(e=>e.tripId===id).map(({tripId,...e})=>pubEntry(e,dev))};
+  },
+  createTrip(trip){
+    const d=this.db(),id=rid(8),key=rid(20);
+    const t={...cleanTrip(trip),id,createdAt:Date.now()};
+    d.trips[id]={key,trip:t};LS.set('wk_mockdb',d);return{id,key};
+  },
+  saveTrip(id,key,trip){
+    const d=this.db(),t=d.trips[id];if(!t||t.key!==key)throw new Error('管理者のみ変更できます');
+    t.trip={...t.trip,...cleanTrip(trip),id};LS.set('wk_mockdb',d);return true;
+  },
+  deleteTrip(id,key){
+    const d=this.db(),t=d.trips[id];if(!t||t.key!==key)throw new Error('管理者のみ削除できます');
+    delete d.trips[id];d.entries=d.entries.filter(e=>e.tripId!==id);LS.set('wk_mockdb',d);return true;
+  },
+  addEntry(id,entry){
+    const d=this.db(),t=d.trips[id];if(!t)throw new Error('旅が見つかりません');
+    const e={...cleanEntry(entry,t.trip),id:rid(10),createdAt:Date.now()};
+    d.entries.push({tripId:id,...e});LS.set('wk_mockdb',d);return true;
+  },
+  deleteEntry(id,entryId,key,dev){
+    const d=this.db(),t=d.trips[id];if(!t)throw new Error('旅が見つかりません');
+    const i=d.entries.findIndex(e=>e.tripId===id&&e.id===entryId);if(i<0)return true;
+    if(t.key!==key&&d.entries[i].dev!==dev)throw new Error('自分の申請か、管理者のみ削除できます');
+    d.entries.splice(i,1);LS.set('wk_mockdb',d);return true;
+  }
+};
+
+async function api(fn,...args){
+  if(REMOTE){
+    // text/plain にするとプリフライトなしで Apps Script に送れる
+    let res;
+    try{
+      res=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn,args})});
+    }catch(e){throw new Error('通信できませんでした。電波を確認してください');}
+    let r;
+    try{r=await res.json();}catch(e){throw new Error('サーバーの応答が正しくありません（Apps Scriptの公開設定を確認）');}
+    if(r.error)throw new Error(r.error);
+    return r.data;
+  }
+  return new Promise((res,rej)=>setTimeout(()=>{
+    try{res(JSON.parse(JSON.stringify(Mock[fn](...args))));}catch(e){rej(e);}
+  },120));
+}
+
+// ---------- 計算 ----------
+function weightOf(f,cw){return f.adults+f.children*cw;}
+function calc(trip,entries){
+  const fams=trip.families,cw=Number(trip.childWeight);
+  const st={};fams.forEach(f=>st[f.id]={...f,w:weightOf(f,cw),paid:0,raw:0,share:0});
+  let total=0,skipped=0;
+  entries.forEach(e=>{
+    if(!st[e.familyId]){skipped++;return;}
+    total+=e.amount;st[e.familyId].paid+=e.amount;
+    let tg=(e.targets&&e.targets.length?e.targets:fams.map(f=>f.id)).filter(id=>st[id]&&st[id].w>0);
+    if(!tg.length)tg=[e.familyId];
+    const tw=tg.reduce((s,id)=>s+(st[id].w||1),0);
+    tg.forEach(id=>st[id].raw+=e.amount*(st[id].w||1)/tw);
+  });
+  // 端数は「最大剰余法」で配分して、合計がぴったり一致するようにする
+  const list=Object.values(st);
+  list.forEach(f=>f.share=Math.floor(f.raw+1e-9));
+  let rem=total-list.reduce((s,f)=>s+f.share,0);
+  [...list].sort((a,b)=>(b.raw-Math.floor(b.raw))-(a.raw-Math.floor(a.raw))).forEach(f=>{if(rem>0){f.share++;rem--;}});
+  list.forEach(f=>f.bal=f.paid-f.share);
+  const deb=list.filter(f=>f.bal<0).map(f=>({id:f.id,name:f.name,a:-f.bal})).sort((a,b)=>b.a-a.a);
+  const cre=list.filter(f=>f.bal>0).map(f=>({id:f.id,name:f.name,a:f.bal})).sort((a,b)=>b.a-a.a);
+  const transfers=[];let i=0,j=0;
+  while(i<deb.length&&j<cre.length){
+    const a=Math.min(deb[i].a,cre[j].a);
+    if(a>0)transfers.push({from:deb[i].name,to:cre[j].name,amount:a});
+    deb[i].a-=a;cre[j].a-=a;
+    if(deb[i].a===0)i++;if(cre[j].a===0)j++;
+  }
+  const totalW=list.reduce((s,f)=>s+f.w,0);
+  return{total,totalW,perUnit:totalW?total/totalW:0,fams:list,transfers,skipped,hasTargets:entries.some(e=>e.targets&&e.targets.length)};
+}
+
+// ---------- 状態 ----------
+const S={tripId:null,key:null,trip:null,entries:[],owner:false,tab:'submit',creating:false,draft:null,filter:'all',lastSync:null,cat:'',scope:'all'};
+
+const myTrips=()=>LS.get('wk_trips',[]);
+function upsertMyTrip(t){
+  const l=myTrips(),i=l.findIndex(x=>x.id===t.id);
+  if(i>=0)l[i]={...l[i],...t,key:t.key||l[i].key};else l.unshift(t);
+  LS.set('wk_trips',l);
+}
+function removeMyTrip(id){LS.set('wk_trips',myTrips().filter(x=>x.id!==id));}
+function baseUrl(){return location.origin+location.pathname;}
+// アドレスを ?trip=… にしておくと、その画面でホーム画面に追加したとき旅が開いた状態で起動する
+// （管理者は key も残す：ホーム画面アプリは Safari と保存領域が別なので、URL に無いと管理者と認識できない）
+function setUrlTrip(id,key){try{history.replaceState(null,'',id?'?trip='+id+(key?'&key='+key:''):location.pathname);}catch(e){}}
+const joinUrl=()=>baseUrl()+'?trip='+S.tripId;
+const adminUrl=()=>joinUrl()+'&key='+S.key;
+
+// ---------- ホーム ----------
+function showHome(){
+  stopPoll();
+  S.tripId=null;S.trip=null;S.creating=false;
+  setUrlTrip(null);
+  $('#v-home').classList.remove('hidden');$('#v-trip').classList.add('hidden');$('#tabs').classList.add('hidden');
+  $('#demo-note').classList.toggle('hidden',REMOTE);
+  const l=myTrips(),box=$('#home-list');
+  if(!l.length){box.innerHTML='<div class="empty" style="padding:24px">まだ旅はありません</div>';return;}
+  box.innerHTML='';
+  l.forEach(t=>{
+    const b=document.createElement('div');b.className='trip-item';b.setAttribute('role','button');
+    b.innerHTML=`<span class="role ${t.key?'owner':'member'}">${t.key?'管理者':'参加'}</span><span class="nm">${esc(t.name||t.id)}</span><button class="rm" aria-label="一覧から外す">×</button>`;
+    b.addEventListener('click',()=>openTrip(t.id));
+    b.querySelector('.rm').addEventListener('click',ev=>{
+      ev.stopPropagation();
+      if(!confirm(`「${t.name}」をこの端末の一覧から外しますか？\n（データは消えません）`))return;
+      removeMyTrip(t.id);showHome();
+    });
+    box.appendChild(b);
+  });
+}
+$('#btn-new').addEventListener('click',()=>startCreate());
+$('#btn-join').addEventListener('click',()=>{
+  const v=$('#join-id').value.trim().replace(/.*[?&]trip=/,'').replace(/[^A-Za-z0-9]/g,'');
+  if(!v){showToast('旅IDを入力してください');return;}
+  $('#join-id').value='';openTrip(v);
+});
+
+// ---------- 旅を開く ----------
+function showTripShell(){
+  $('#v-home').classList.add('hidden');$('#v-trip').classList.remove('hidden');
+  window.scrollTo(0,0);
+}
+async function openTrip(id,key){
+  S.creating=false;S.tripId=id;S.trip=null;S.entries=[];S.filter='all';
+  const mine=myTrips().find(t=>t.id===id);
+  S.key=key||mine?.key||null;
+  S.tab='submit';
+  showTripShell();
+  $('#trip-name').textContent='読み込み中…';$('#trip-sub').textContent='';
+  $('#trip-loading').classList.remove('hidden');
+  ['submit','list','result','setup'].forEach(p=>$('#p-'+p).classList.add('hidden'));
+  $('#tabs').classList.add('hidden');
+  $('#btn-qr').classList.remove('hidden');$('#btn-refresh').classList.remove('hidden');
+  try{
+    await load();
+    if(key&&S.owner)showToast('管理者としてこの端末に登録しました');
+    startPoll();
+  }catch(e){
+    $('#trip-loading').innerHTML=esc(e.message)+'<br><br><button class="btn ghost" onclick="showHome()" style="max-width:200px;margin:0 auto">ホームへ</button>';
+  }
+}
+async function load(){
+  const r=await api('getTrip',S.tripId,S.key,DEV);
+  S.trip=r.trip;S.entries=r.entries.sort((a,b)=>b.createdAt-a.createdAt);S.owner=r.owner;
+  if(S.key&&!S.owner)S.key=null;
+  upsertMyTrip({id:S.tripId,name:S.trip.name,key:S.owner?S.key:undefined});
+  S.lastSync=new Date();
+  setUrlTrip(S.tripId,S.owner?S.key:null);
+  $('#trip-loading').classList.add('hidden');
+  renderTrip();
+}
+async function refresh(manual){
+  if(!S.tripId||S.creating)return;
+  try{await load();if(manual)showToast('最新の状態にしました');}
+  catch(e){if(manual)showToast('更新できませんでした');}
+}
+$('#btn-refresh').addEventListener('click',()=>refresh(true));
+$('#btn-back').addEventListener('click',()=>{
+  if(S.creating||!S.trip){showHome();return;}
+  showHome();
+});
+
+let pollT=null;
+function startPoll(){stopPoll();pollT=setInterval(()=>{if(document.visibilityState==='visible'&&S.tab!=='setup')refresh(false);},20000);}
+function stopPoll(){clearInterval(pollT);pollT=null;}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&S.tripId&&S.tab!=='setup')refresh(false);});
+
+function renderTrip(){
+  const t=S.trip;
+  $('#trip-name').textContent=t.name;
+  const tw=t.families.reduce((s,f)=>s+weightOf(f,t.childWeight),0);
+  const hm=S.lastSync?S.lastSync.toTimeString().slice(0,5):'';
+  $('#trip-sub').textContent=[t.date,`${t.families.length}家族・${fmtW(tw)}人分`,hm&&`${hm} 更新`].filter(Boolean).join(' ・ ');
+  $('#tabs').classList.remove('hidden');
+  $('#tab-setup').classList.toggle('hidden',!S.owner);
+  if(S.tab==='setup'&&!S.owner)S.tab='submit';
+  renderSubmitOptions();
+  renderList();renderResult();
+  if(S.tab==='setup')fillSetup(S.trip);
+  switchTab(S.tab,true);
+}
+
+function switchTab(tab,silent){
+  if(tab==='setup'&&!silent&&!S.creating)fillSetup(S.trip);
+  S.tab=tab;
+  ['submit','list','result','setup'].forEach(p=>$('#p-'+p).classList.toggle('hidden',p!==tab));
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
+  if(!silent)window.scrollTo(0,0);
+}
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.tab)));
+
+// ---------- 申請 ----------
+$('#s-cats').innerHTML=CATS.map(([n,i])=>`<button class="chip" data-v="${n}">${i} ${n}</button>`).join('');
+$('#s-cats').addEventListener('click',e=>{
+  const b=e.target.closest('.chip');if(!b)return;
+  S.cat=S.cat===b.dataset.v?'':b.dataset.v;
+  document.querySelectorAll('#s-cats .chip').forEach(c=>c.classList.toggle('on',c.dataset.v===S.cat));
+});
+$('#s-scope').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  S.scope=b.dataset.v;
+  document.querySelectorAll('#s-scope button').forEach(x=>x.classList.toggle('on',x===b));
+  $('#s-targets').classList.toggle('hidden',S.scope!=='some');
+});
+$('#s-fam').addEventListener('change',()=>LS.set('wk_fam_'+S.tripId,$('#s-fam').value));
+
+function renderSubmitOptions(){
+  const t=S.trip,sel=$('#s-fam');
+  const cur=sel.value||LS.get('wk_fam_'+S.tripId,'');
+  sel.innerHTML='<option value="">選んでください</option>'+t.families.map((f,i)=>`<option value="${esc(f.id)}">${ALPHAS[i]}．${esc(f.name)}</option>`).join('');
+  if(t.families.some(f=>f.id===cur))sel.value=cur;
+  const checked=new Set([...document.querySelectorAll('#s-targets input:checked')].map(x=>x.value));
+  const fresh=!document.querySelector('#s-targets input');
+  $('#s-targets').innerHTML=t.families.map(f=>`<label class="chk"><input type="checkbox" value="${esc(f.id)}"${fresh||checked.has(f.id)?' checked':''}/>${esc(f.name)}<small>${fmtW(weightOf(f,t.childWeight))}人分</small></label>`).join('');
+}
+
+function parseAmount(s){
+  s=String(s).replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[,，円¥\s]/g,'');
+  return /^\d+$/.test(s)?parseInt(s,10):NaN;
+}
+$('#btn-submit').addEventListener('click',async()=>{
+  const familyId=$('#s-fam').value;
+  const amount=parseAmount($('#s-amt').value);
+  const item=$('#s-item').value.trim();
+  if(!familyId){showToast('立て替えた家族を選んでください');return;}
+  if(!(amount>0)){showToast('金額を入力してください');$('#s-amt').focus();return;}
+  if(!S.cat&&!item){showToast('何に支払ったか選んでください');return;}
+  let targets=[];
+  if(S.scope==='some'){
+    targets=[...document.querySelectorAll('#s-targets input:checked')].map(x=>x.value);
+    if(!targets.length){showToast('対象の家族を選んでください');return;}
+  }
+  const fam=S.trip.families.find(f=>f.id===familyId);
+  const btn=$('#btn-submit');btn.disabled=true;btn.textContent='送信中…';
+  try{
+    await api('addEntry',S.tripId,{familyId,amount,category:S.cat||'その他',item,targets,dev:DEV});
+    LS.set('wk_fam_'+S.tripId,familyId);
+    $('#s-amt').value='';$('#s-item').value='';S.cat='';
+    document.querySelectorAll('#s-cats .chip').forEach(c=>c.classList.remove('on'));
+    $('#s-scope [data-v=all]').click();
+    document.querySelectorAll('#s-targets input').forEach(x=>x.checked=true);
+    showToast(`✓ ${fam.name} ${yen(amount)} を申請しました`);
+    await load();
+  }catch(e){showToast(e.message||'送信できませんでした');}
+  finally{btn.disabled=false;btn.textContent='申請する';}
+});
+
+// ---------- 履歴 ----------
+function famName(id){return S.trip.families.find(f=>f.id===id)?.name||'（削除された家族）';}
+function renderList(){
+  const t=S.trip;
+  if(S.filter!=='all'&&!t.families.some(f=>f.id===S.filter))S.filter='all';
+  const fs=[['all','すべて'],...t.families.map(f=>[f.id,f.name])];
+  $('#l-filters').innerHTML=fs.map(([v,n])=>`<button class="chip${S.filter===v?' on':''}" data-v="${esc(v)}">${esc(n)}</button>`).join('');
+  const items=S.entries.filter(e=>S.filter==='all'||e.familyId===S.filter);
+  $('#l-label').textContent=(S.filter==='all'?'合計':famName(S.filter)+'の立替')+`（${items.length}件）`;
+  $('#l-total').textContent=yen(items.reduce((s,e)=>s+e.amount,0));
+  const box=$('#l-items');
+  if(!items.length){box.innerHTML='<div class="empty">まだ申請はありません。<br>「申請」タブから立替を登録しましょう。</div>';return;}
+  box.innerHTML='';
+  items.forEach(e=>{
+    const ic=(CATS.find(c=>c[0]===e.category)||CATS[CATS.length-1])[1];
+    const d=new Date(e.createdAt);
+    const when=`${d.getMonth()+1}/${d.getDate()} ${d.toTimeString().slice(0,5)}`;
+    const tg=e.targets&&e.targets.length?`<br>対象：${e.targets.map(id=>esc(famName(id))).join('・')}`:'';
+    const row=document.createElement('div');row.className='ent';
+    row.innerHTML=`<div class="ent-ic">${ic}</div>
+      <div class="ent-main"><div class="t">${esc(e.item||e.category)}</div><div class="s">${esc(famName(e.familyId))}が立替 ・ ${when}${e.item?' ・ '+esc(e.category):''}${tg}</div></div>
+      <div class="ent-amt">${yen(e.amount)}</div>`;
+    if(S.owner||e.mine){
+      const del=document.createElement('button');del.className='ent-del';del.textContent='×';del.setAttribute('aria-label','削除');
+      del.addEventListener('click',async()=>{
+        if(!confirm(`「${e.item||e.category} ${yen(e.amount)}」を削除しますか？`))return;
+        try{await api('deleteEntry',S.tripId,e.id,S.key,DEV);showToast('削除しました');await load();}
+        catch(err){showToast(err.message);}
+      });
+      row.appendChild(del);
+    }
+    box.appendChild(row);
+  });
+}
+$('#l-filters').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;S.filter=b.dataset.v;renderList();});
+
+// ---------- 精算 ----------
+function renderResult(){
+  const t=S.trip,r=calc(t,S.entries),box=$('#p-result');
+  if(!S.entries.length){box.innerHTML='<div class="empty">申請が登録されると、ここに精算結果が表示されます。</div>';return;}
+  const cwLabel={0.5:'子ども0.5人分',1:'子どもも1人分',0:'子どもは負担なし'}[t.childWeight];
+  const transfers=r.transfers.length
+    ?r.transfers.map(s=>`<div class="settle"><div class="who"><b>${esc(s.from)}</b> → <b>${esc(s.to)}</b><small>${esc(s.from)}が${esc(s.to)}に支払う</small></div><div class="amt">${yen(s.amount)}</div></div>`).join('')
+    :'<div class="no-settle">✓ 清算は不要です</div>';
+  box.innerHTML=`
+    <div class="stat-grid">
+      <div class="stat"><small>合計金額</small><b>${yen(r.total)}</b></div>
+      <div class="stat"><small>1人分あたり${r.hasTargets?'（目安）':''}</small><b>${yen(r.perUnit)}</b></div>
+    </div>
+    <div class="rlabel">精算方法</div>
+    ${transfers}
+    <div class="rlabel" style="margin-top:18px">家族別の内訳 <span style="font-weight:400">（${cwLabel}）</span></div>
+    <div class="ftable">${r.fams.map(f=>`
+      <div class="frow">
+        <div class="frow-hd"><b>${esc(f.name)}</b><small>大人${f.adults}${f.children?'・子ども'+f.children:''} = ${fmtW(f.w)}人分</small></div>
+        <div class="frow-nums">
+          <span>立替<b>${yen(f.paid)}</b></span>
+          <span>負担<b>${yen(f.share)}</b></span>
+          <span>差額<b class="${f.bal>0?'pos':f.bal<0?'neg':''}">${f.bal>0?'+':''}${yen(f.bal)}</b></span>
+        </div>
+      </div>`).join('')}
+    </div>
+    ${r.skipped?`<div class="note">削除された家族の申請が${r.skipped}件あり、計算から除外しています。</div>`:''}
+    <div class="btn-row"><button class="btn ghost" id="r-copy">📋 結果をコピー（LINE用）</button></div>`;
+  $('#r-copy').addEventListener('click',()=>shareText(resultText(r),true));
+}
+function resultText(r){
+  const t=S.trip;
+  const lines=[`【${t.name}】割り勘精算`,`合計 ${yen(r.total)}（${fmtW(r.totalW)}人分）`,''];
+  if(r.transfers.length){lines.push('▼ 精算');r.transfers.forEach(s=>lines.push(`${s.from} → ${s.to}　${yen(s.amount)}`));}
+  else lines.push('清算は不要です');
+  lines.push('','▼ 内訳（立替／負担）');
+  r.fams.forEach(f=>lines.push(`${f.name}：${yen(f.paid)}／${yen(f.share)}`));
+  return lines.join('\n');
+}
+
+// ---------- 設定（作成・編集） ----------
+function startCreate(){
+  stopPoll();
+  S.creating=true;S.tripId=null;S.trip=null;S.key=null;
+  showTripShell();
+  $('#trip-name').textContent='新しい旅を作る';$('#trip-sub').textContent='旅の名前と家族を登録してください';
+  $('#trip-loading').classList.add('hidden');
+  $('#btn-qr').classList.add('hidden');$('#btn-refresh').classList.add('hidden');
+  $('#tabs').classList.add('hidden');
+  fillSetup({name:'',date:'',childWeight:0.5,families:[
+    {id:rid(6),name:'',adults:2,children:0},{id:rid(6),name:'',adults:2,children:0},{id:rid(6),name:'',adults:2,children:0}
+  ]});
+  ['submit','list','result'].forEach(p=>$('#p-'+p).classList.add('hidden'));
+  $('#p-setup').classList.remove('hidden');
+}
+function fillSetup(t){
+  S.draft=JSON.parse(JSON.stringify({name:t.name,date:t.date||'',childWeight:t.childWeight,families:t.families}));
+  $('#u-name').value=S.draft.name;$('#u-date').value=S.draft.date;
+  $('#btn-save').textContent=S.creating?'この内容で旅を作る':'保存する';
+  $('#u-danger').classList.toggle('hidden',S.creating);
+  renderSetup();
+}
+function renderSetup(){
+  const d=S.draft;
+  document.querySelectorAll('#u-cw button').forEach(b=>b.classList.toggle('on',Number(b.dataset.v)===Number(d.childWeight)));
+  const box=$('#u-fams');box.innerHTML='';
+  d.families.forEach((f,i)=>{
+    const el=document.createElement('div');el.className='fam';
+    el.innerHTML=`<div class="fam-hd"><span class="fam-alpha">${ALPHAS[i]}</span><input class="fn" placeholder="家族名（例：${['山田','佐藤','鈴木','田中','高橋'][i%5]}家）" value="${esc(f.name)}" autocomplete="off"/><button class="fam-del" aria-label="削除">×</button></div>
+      <div class="fam-nums">
+        <div class="stp"><span class="l">大人</span><button data-k="adults" data-d="-1">−</button><b>${f.adults}</b><button data-k="adults" data-d="1">＋</button></div>
+        <div class="stp"><span class="l">子ども</span><button data-k="children" data-d="-1">−</button><b>${f.children}</b><button data-k="children" data-d="1">＋</button></div>
+        <span class="fam-w">${fmtW(weightOf(f,d.childWeight))}人分</span>
+      </div>`;
+    el.querySelector('.fn').addEventListener('input',e=>{f.name=e.target.value;});
+    el.querySelector('.fam-del').addEventListener('click',()=>{
+      if(d.families.length<=1){showToast('家族は1つ以上必要です');return;}
+      const used=!S.creating&&S.entries.some(e=>e.familyId===f.id);
+      if(used&&!confirm(`${f.name||'この家族'}には申請があります。削除すると、その申請は精算から外れます。削除しますか？`))return;
+      d.families.splice(i,1);renderSetup();
+    });
+    el.querySelectorAll('.stp button').forEach(b=>b.addEventListener('click',()=>{
+      const k=b.dataset.k;f[k]=Math.max(0,Math.min(30,f[k]+Number(b.dataset.d)));renderSetup();
+    }));
+    box.appendChild(el);
+  });
+  const tw=d.families.reduce((s,f)=>s+weightOf(f,d.childWeight),0);
+  $('#u-total').textContent=`合計 ${fmtW(tw)}人分`;
+}
+$('#u-cw').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.draft.childWeight=Number(b.dataset.v);renderSetup();});
+$('#btn-add-fam').addEventListener('click',()=>{
+  if(S.draft.families.length>=20){showToast('家族は20まで登録できます');return;}
+  S.draft.families.push({id:rid(6),name:'',adults:2,children:0});renderSetup();
+  const ins=document.querySelectorAll('#u-fams .fn');ins[ins.length-1].focus();
+});
+$('#btn-save').addEventListener('click',async()=>{
+  const d=S.draft;d.name=$('#u-name').value;d.date=$('#u-date').value;
+  if(!d.name.trim()){showToast('旅の名前を入力してください');$('#u-name').focus();return;}
+  if(d.families.some(f=>!f.name.trim())){showToast('家族名が空欄のところがあります');return;}
+  if(d.families.some(f=>f.adults+f.children===0)){showToast('人数が0人の家族があります');return;}
+  const btn=$('#btn-save');btn.disabled=true;
+  try{
+    if(S.creating){
+      const r=await api('createTrip',d);
+      upsertMyTrip({id:r.id,name:d.name.trim(),key:r.key});
+      await openTrip(r.id,r.key);
+      openQR();
+    }else{
+      await api('saveTrip',S.tripId,S.key,d);
+      showToast('保存しました');
+      S.tab='submit';await load();
+    }
+  }catch(e){showToast(e.message);}
+  finally{btn.disabled=false;}
+});
+$('#btn-del-trip').addEventListener('click',async()=>{
+  if(!confirm(`「${S.trip.name}」を削除しますか？\n申請データもすべて消え、元に戻せません。`))return;
+  try{await api('deleteTrip',S.tripId,S.key);removeMyTrip(S.tripId);showToast('削除しました');showHome();}
+  catch(e){showToast(e.message);}
+});
+
+// ---------- 招待QR ----------
+function openQR(){
+  $('#q-name').textContent=S.trip.name;
+  const url=joinUrl();
+  $('#q-url').textContent=url;
+  const box=$('#q-code');box.innerHTML='';
+  if(window.QRCode){new QRCode(box,{text:url,width:480,height:480,correctLevel:QRCode.CorrectLevel.M});}
+  else box.innerHTML='<div style="width:240px;padding:40px 10px;color:#999;font-size:12px">QRコードを表示できません（オフライン）。<br>下のリンクを送ってください。</div>';
+  $('#q-admin').classList.toggle('hidden',!S.owner);
+  $('#m-qr').classList.remove('hidden');
+}
+$('#btn-qr').addEventListener('click',openQR);
+$('#q-close').addEventListener('click',()=>$('#m-qr').classList.add('hidden'));
+$('#m-qr').addEventListener('click',e=>{if(e.target.id==='m-qr')$('#m-qr').classList.add('hidden');});
+$('#q-copy').addEventListener('click',()=>copyText(joinUrl()));
+$('#q-share').addEventListener('click',()=>shareText(`「${S.trip.name}」の割り勘に参加してね\n${joinUrl()}`));
+$('#q-admin-copy').addEventListener('click',()=>copyText(adminUrl()));
+
+function copyText(text){
+  const done=()=>showToast('📋 コピーしました');
+  const fallback=()=>{
+    const ta=document.createElement('textarea');ta.value=text;ta.style.cssText='position:fixed;opacity:0;top:0;left:0';
+    document.body.appendChild(ta);ta.focus();ta.select();
+    try{document.execCommand('copy');done();}catch(e){prompt('コピーしてください',text);}
+    ta.remove();
+  };
+  if(navigator.clipboard)navigator.clipboard.writeText(text).then(done,fallback);else fallback();
+}
+function shareText(text,preferCopy){
+  if(!preferCopy&&navigator.share){navigator.share({text}).catch(err=>{if(err.name!=='AbortError')copyText(text);});}
+  else copyText(text);
+}
+
+// ---------- 起動 ----------
+(function init(){
+  const q=new URLSearchParams(location.search);
+  const clean=s=>String(s||'').replace(/[^A-Za-z0-9]/g,'');
+  const trip=clean(q.get('trip')),key=clean(q.get('key'));
+  if(trip)openTrip(trip,key||undefined);else showHome();
+})();
+</script>
+</body>
+</html>
