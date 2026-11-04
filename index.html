@@ -128,6 +128,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .ent-main .s{font-size:11px;color:var(--text-sub);margin-top:3px;line-height:1.5}
 .ent-amt{font-size:15px;font-weight:700;text-align:right;flex-shrink:0}
 .ent.editable{cursor:pointer}
+.ent-pen{font-size:15px;color:var(--text-hint);flex-shrink:0;margin-left:-4px}
 .ent.editable:active{background:var(--accent-soft)}
 .ent-main .m{font-size:12px;color:var(--text);margin-top:5px;padding:6px 8px;background:var(--accent-soft);border-radius:6px;line-height:1.5;white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .edited{display:inline-block;font-size:10px;color:var(--text-sub);border:1px solid var(--border);border-radius:10px;padding:0 6px;margin-left:4px;vertical-align:1px}
@@ -445,10 +446,11 @@ const Mock={
     const e={...cleanEntry(entry,t.trip),id:rid(10),createdAt:Date.now()};
     d.entries.push({tripId:id,...e});LS.set('wk_mockdb',d);return true;
   },
-  updateEntry(id,entryId,key,entry){
-    const d=this.db(),t=d.trips[id];if(!t||t.key!==key)throw new Error('管理者のみ変更できます');
+  updateEntry(id,entryId,key,entry,dev){
+    const d=this.db(),t=d.trips[id];if(!t)throw new Error('旅が見つかりません');
     const i=d.entries.findIndex(e=>e.tripId===id&&e.id===entryId);if(i<0)throw new Error('申請が見つかりません（削除された可能性があります）');
     const old=d.entries[i];
+    if(!(key&&t.key===key)&&!(dev&&old.dev===dev))throw new Error('自分の申請か、管理者のみ編集できます');
     d.entries[i]={tripId:id,...cleanEntry({...entry,dev:old.dev},t.trip),id:old.id,createdAt:old.createdAt,editedAt:Date.now()};
     LS.set('wk_mockdb',d);return true;
   },
@@ -704,17 +706,16 @@ function renderList(){
     const d=new Date(e.createdAt);
     const when=`${d.getMonth()+1}/${d.getDate()} ${d.toTimeString().slice(0,5)}`;
     const tg=e.targets&&e.targets.length?`<br>対象：${e.targets.map(id=>esc(famName(id))).join('・')}`:'';
-    const row=document.createElement('div');row.className='ent'+(S.owner?' editable':'');
+    const canEdit=S.owner||e.mine;
+    const row=document.createElement('div');row.className='ent'+(canEdit?' editable':'');
     row.innerHTML=`<div class="ent-ic">${ic}</div>
       <div class="ent-main"><div class="t">${esc(e.item||e.category)}${e.editedAt?'<span class="edited">編集済</span>':''}</div><div class="s">${esc(famName(e.familyId))}が立替 ・ ${when}${e.item?' ・ '+esc(e.category):''}${tg}</div>${e.memo?`<div class="m">${esc(e.memo)}</div>`:''}</div>
       <div class="ent-amt">${yen(e.amount)}</div>`;
-    if(S.owner){
-      // 管理者は行をタップで編集（削除も編集画面から）
+    // 管理者は全件、家族は自分の申請だけ、行をタップで編集（削除も編集画面から）
+    if(canEdit){
+      const pen=document.createElement('span');pen.className='ent-pen';pen.textContent='✎';
+      row.appendChild(pen);
       row.addEventListener('click',()=>openEdit(e));
-    }else if(e.mine){
-      const del=document.createElement('button');del.className='ent-del';del.textContent='×';del.setAttribute('aria-label','削除');
-      del.addEventListener('click',()=>deleteEntry(e));
-      row.appendChild(del);
     }
     box.appendChild(row);
   });
@@ -763,7 +764,7 @@ $('#e-save').addEventListener('click',async()=>{
   if(!targets.length){showToast('割り勘の対象を1つ以上選んでください');return;}
   const btn=$('#e-save');btn.disabled=true;btn.textContent='保存中…';
   try{
-    await api('updateEntry',S.tripId,editing.id,S.key,{familyId,amount,category:editCat||'その他',item:$('#e-item').value,memo:$('#e-memo').value,targets});
+    await api('updateEntry',S.tripId,editing.id,S.key,{familyId,amount,category:editCat||'その他',item:$('#e-item').value,memo:$('#e-memo').value,targets},DEV);
     closeEdit();showToast('✓ 修正しました');await load();
   }catch(err){showToast(err.message);}
   finally{btn.disabled=false;btn.textContent='保存する';}
